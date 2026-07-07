@@ -1,0 +1,42 @@
+{
+  "target_host": "127.0.0.1",
+  "udp_port": 5005,
+  "tcp_port": 5006,
+  "http_port": 5007,
+  "mqtt_broker": "broker.hivemq.com",
+  "mqtt_port": 1883,
+  "devices": [
+    {
+      "device_id": "temp-sensor-01",
+      "device_type": "temperature_humidity",
+      "protocol": "udp",
+      "interval_seconds": 2.0,
+      "traffic_profile": "normal"
+    },
+    {
+      "device_id": "smart-lock-02",
+      "device_type": "security_door",
+      "protocol": "tcp",
+      "interval_seconds": 3.0,
+      "traffic_profile": "normal"
+    },
+    {
+      "device_id": "thermostat-03",
+      "device_type": "hvac_control",
+      "protocol": "http",
+      "interval_seconds": 5.0,
+      "traffic_profile": "normal"
+    },
+    {
+      "device_id": "power-meter-04",
+      "device_type": "smart_power_meter",
+      "protocol": "mqtt",
+      "interval_seconds": 4.0,
+      "traffic_profile": "normal"
+    }
+  ],
+  "global_settings": {
+    "simulation_duration_seconds": 0,
+    "traffic_profile_override": null
+  }
+}
