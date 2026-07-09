@@ -32,6 +32,17 @@ analyze_report.py
 
 # Old Word/Doc drafts
 *.doc
+*.docx
+
+# Report and presentation files (not for GitHub)
+*.pdf
+*.pptx
+*.pcap
+presentation.html
+generate_ppt.py
+
+# Template images
+template_images/
 
 # Environment
 .env
