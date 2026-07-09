@@ -37,9 +37,10 @@ analyze_report.py
 # Report and presentation files (not for GitHub)
 *.pdf
 *.pptx
-*.pcap
 presentation.html
 generate_ppt.py
+
+# Keep capture.pcap as it is the main project output/demo
 
 # Template images
 template_images/
