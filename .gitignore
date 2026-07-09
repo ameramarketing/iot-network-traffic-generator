@@ -23,3 +23,16 @@ Thumbs.db
 # Temporary text logs/test outputs
 *test_log.txt
 test_log.txt
+
+# Temporary analysis/extracted text files
+*_text.txt
+report_text.txt
+new_report_text.txt
+analyze_report.py
+
+# Old Word/Doc drafts
+*.doc
+
+# Environment
+.env
+*.env

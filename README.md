@@ -5,12 +5,18 @@ A modular, lightweight Python-based tool to generate synthetic IoT device teleme
 ## Features
 
 - **Multi-protocol Support**: Generates traffic over HTTP POST, TCP socket streams, UDP packets, and MQTT (connected to HiveMQ via raw binary encoding).
+- **Real-Time Web Dashboard**: Built-in HTTP server hosts a dark-themed, animated analytics dashboard at `http://127.0.0.1:5007/dashboard` with live canvas charts, protocol distribution cards, dynamic telemetry log feeds, and active control buttons.
+- **Intrusion Detection & Prevention System (IDS/IPS)**:
+  - **DDoS Flooding Detection**: Automatically detects device packet rates exceeding 12 packets/sec over a sliding 5s window.
+  - **Botnet Signature Detection**: Identifies malicious payloads (e.g., `OVERFLOW_ATTACK`) and immediately applies firewall rules.
+  - **Active IPS Mitigation & Firewall Mode Toggle**: Blocked devices are instantly dropped at the socket layer across UDP, TCP, HTTP (`403 Forbidden`), and MQTT. Includes an interactive toggle (`Active Drop vs IDS Only Mode`) and manual device unblocking via the dashboard.
+- **Automatic PCAP Capture**: Features a custom byte-level writer (`capture.pcap`) that wraps standard Ethernet, IPv4, and TCP/UDP headers with calculated checksums, fully ready for deep-dive packet inspection in **Wireshark**.
 - **Concurrency**: Simulates multiple IoT devices running simultaneously using Python's threading library.
 - **Traffic Profiles**:
-  - `normal`: Simulates typical periodic updates from smart sensors (e.g., standard temperature/humidity readings).
-  - `burst`: Simulates events/anomalies requiring higher transmission rates and spiked sensor values (e.g., HVAC failure or security door breach).
+  - `normal`: Simulates typical periodic updates from smart sensors.
+  - `burst`: Simulates events/anomalies requiring higher transmission rates and spiked sensor values.
   - `attack`: Simulates a distributed denial of service (DDoS) flood from compromised devices to evaluate host resilience under network attacks.
-- **Dynamic Control**: Change the `traffic_profile_override` configuration parameter in `config.json` at runtime, and the running generator will instantly update its behavior without restarting!
+- **Dynamic Control**: Change profiles instantly via the Web Dashboard buttons or by modifying `config.json` without restarting servers!
 - **Zero External Dependencies**: Implemented using pure Python standard libraries.
 
 ---
@@ -18,8 +24,10 @@ A modular, lightweight Python-based tool to generate synthetic IoT device teleme
 ## File Structure
 
 - [config.json](file:///d:/iot%20network%20traffic%20generator/config.json) - Simulation configuration (device definitions, target endpoints, transmission rates).
-- [generator.py](file:///d:/iot%20network%20traffic%20generator/generator.py) - Simulated IoT client engine that generates traffic.
-- [receiver.py](file:///d:/iot%20network%20traffic%20generator/receiver.py) - Central receiver server that listens for and logs HTTP, TCP, and UDP traffic.
+- [generator.py](file:///d:/iot%20network%20traffic%20generator/generator.py) - Simulated IoT client engine that generates traffic across UDP, TCP, HTTP, and MQTT.
+- [receiver.py](file:///d:/iot%20network%20traffic%20generator/receiver.py) - Central server hosting the web dashboard, statistical API endpoints, multi-protocol listeners, and active IDS/IPS firewall.
+- [dashboard.html](file:///d:/iot%20network%20traffic%20generator/dashboard.html) - Premium real-time analytics frontend and interactive security management panel.
+- [pcap_logger.py](file:///d:/iot%20network%20traffic%20generator/pcap_logger.py) - Pure-Python packet capture engine writing raw network frames to `capture.pcap`.
 
 ---
 

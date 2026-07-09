@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT Traffic Generator Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #08090f;
+            --card-bg: rgba(17, 20, 34, 0.65);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            
+            --primary: #3b82f6;      /* UDP - Blue */
+            --secondary: #06b6d4;    /* TCP - Cyan */
+            --success: #10b981;      /* HTTP - Green */
+            --accent: #8b5cf6;       /* MQTT - Purple */
+            --danger: #ef4444;       /* Attack - Red */
+            --warning: #f59e0b;      /* Burst - Amber */
+            
+            --glow-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.05) 0%, transparent 40%);
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--card-border);
+            backdrop-filter: blur(8px);
+            background-color: rgba(8, 9, 15, 0.6);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo-section h1 {
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(to right, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-section span {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            padding: 2px 8px;
+            border-radius: 20px;
+            background: rgba(59, 130, 246, 0.15);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #60a5fa;
+        }
+
+        .system-status {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            padding: 6px 14px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #34d399;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #10b981;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #10b981;
+            animation: pulse 1.8s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        main {
+            flex: 1;
+            max-width: 1600px;
+            margin: 0 auto;
+            width: 100%;
+            padding: 30px 40px;
+            display: grid;
+            grid-template-columns: 3fr 1fr;
+            gap: 30px;
+        }
+
+        .dashboard-content {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(10px);
+        }
+
+        .card:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: transparent;
+        }
+
+        .card.udp::before { background: var(--primary); }
+        .card.tcp::before { background: var(--secondary); }
+        .card.http::before { background: var(--success); }
+        .card.mqtt::before { background: var(--accent); }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .card-value {
+            font-size: 32px;
+            font-weight: 800;
+            margin-bottom: 4px;
+            font-family: 'Outfit', sans-serif;
+            letter-spacing: -0.5px;
+        }
+
+        .card-desc {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .hero-stats {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 24px;
+        }
+
+        .chart-card {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .chart-container {
+            flex: 1;
+            position: relative;
+            min-height: 220px;
+            width: 100%;
+        }
+
+        canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .overview-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .metric-lbl {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .metric-val {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        /* Profile Override Panel */
+        .controls-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .controls-card h2 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .profile-btn {
+            width: 100%;
+            padding: 14px 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.02);
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .profile-btn:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+
+        .profile-btn .indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .profile-btn.active-normal {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: rgba(16, 185, 129, 0.3);
+            color: #34d399;
+        }
+        .profile-btn.active-normal .indicator {
+            background: #10b981;
+            box-shadow: 0 0 8px #10b981;
+        }
+
+        .profile-btn.active-burst {
+            background: rgba(245, 158, 11, 0.1);
+            border-color: rgba(245, 158, 11, 0.3);
+            color: #fbbf24;
+        }
+        .profile-btn.active-burst .indicator {
+            background: #f59e0b;
+            box-shadow: 0 0 8px #f59e0b;
+            animation: pulse-yellow 1s infinite alternate;
+        }
+
+        .profile-btn.active-attack {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #f87171;
+        }
+        .profile-btn.active-attack .indicator {
+            background: #ef4444;
+            box-shadow: 0 0 8px #ef4444;
+            animation: pulse-red 0.5s infinite alternate;
+        }
+
+        @keyframes pulse-yellow {
+            from { box-shadow: 0 0 2px #f59e0b; }
+            to { box-shadow: 0 0 12px #f59e0b; }
+        }
+
+        @keyframes pulse-red {
+            from { box-shadow: 0 0 2px #ef4444; }
+            to { box-shadow: 0 0 14px #ef4444; }
+        }
+
+        /* Console Logs Section */
+        .console-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            height: 300px;
+        }
+
+        .console-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .console-body {
+            flex: 1;
+            background: #040508;
+            border-radius: 10px;
+            padding: 16px;
+            font-family: 'Fira Code', monospace;
+            font-size: 13px;
+            color: #a7f3d0;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .console-line {
+            line-height: 1.5;
+            word-break: break-all;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .console-line .proto-label {
+            font-weight: 700;
+            padding: 1px 5px;
+            border-radius: 4px;
+            margin-right: 6px;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        .console-line .proto-udp { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+        .console-line .proto-tcp { background: rgba(6, 182, 212, 0.15); color: #22d3ee; }
+        .console-line .proto-http { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+        .console-line .proto-mqtt { background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
+
+        /* Warning Banner */
+        .alert-banner {
+            grid-column: span 2;
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+            padding: 14px 20px;
+            border-radius: 12px;
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 600;
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        /* IDS Alert Feed */
+        .ids-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            height: 320px;
+        }
+
+        .ids-body {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 10px 0;
+        }
+
+        .ids-empty {
+            color: var(--text-muted);
+            font-size: 14px;
+            text-align: center;
+            margin-top: auto;
+            margin-bottom: auto;
+            font-style: italic;
+        }
+
+        .alert-item {
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            animation: slideIn 0.2s ease-out;
+        }
+
+        .alert-item.severity-high {
+            background: rgba(239, 68, 68, 0.08);
+            border-color: rgba(239, 68, 68, 0.25);
+        }
+
+        .alert-item.severity-medium {
+            background: rgba(245, 158, 11, 0.08);
+            border-color: rgba(245, 158, 11, 0.25);
+        }
+
+        .alert-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .alert-meta .alert-type {
+            text-transform: uppercase;
+        }
+
+        .alert-meta .severity-high-lbl { color: #f87171; }
+        .alert-meta .severity-medium-lbl { color: #fbbf24; }
+        .alert-meta .alert-time { color: var(--text-muted); }
+
+        .alert-message {
+            font-size: 13px;
+            color: var(--text-main);
+        }
+
+        /* IPS Blocklist */
+        .blocked-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .blocked-empty {
+            font-size: 13px;
+            color: var(--text-muted);
+            text-align: center;
+            font-style: italic;
+            padding: 10px 0;
+        }
+
+        .blocked-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: rgba(239, 68, 68, 0.05);
+            border: 1px solid rgba(239, 68, 68, 0.15);
+            border-radius: 8px;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        .blocked-id {
+            font-family: 'Fira Code', monospace;
+            font-size: 12px;
+            color: #f87171;
+            font-weight: 600;
+        }
+
+        .unblock-btn {
+            padding: 4px 10px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            border-radius: 6px;
+            color: #34d399;
+            font-family: 'Outfit', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .unblock-btn:hover {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: rgba(16, 185, 129, 0.4);
+            transform: translateY(-1px);
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        footer {
+            padding: 20px 40px;
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-muted);
+            border-top: 1px solid var(--card-border);
+            margin-top: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-section">
+            <h1>IoT Network Traffic Simulation <span>v2.0</span></h1>
+        </div>
+        <div class="system-status">
+            <div class="status-pill">
+                <div class="status-dot"></div>
+                Receiver: Online
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Alert Banner for DDoS Attack -->
+        <div id="ddosAlert" class="alert-banner">
+            <span>⚠️ SYSTEM UNDER ATTACK: DDoS Flood Simulation Active! (High Volume Sockets Flooding)</span>
+        </div>
+
+        <div class="dashboard-content">
+            <!-- Metric Cards -->
+            <div class="stats-grid">
+                <div class="card udp">
+                    <div class="card-header">
+                        <span class="card-title">UDP Packets</span>
+                    </div>
+                    <div class="card-value" id="udpPackets">0</div>
+                    <div class="card-desc">Temp/Hum Sensor (Port 5005)</div>
+                </div>
+                <div class="card tcp">
+                    <div class="card-header">
+                        <span class="card-title">TCP Packets</span>
+                    </div>
+                    <div class="card-value" id="tcpPackets">0</div>
+                    <div class="card-desc">Smart Door Lock (Port 5006)</div>
+                </div>
+                <div class="card http">
+                    <div class="card-header">
+                        <span class="card-title">HTTP Packets</span>
+                    </div>
+                    <div class="card-value" id="httpPackets">0</div>
+                    <div class="card-desc">HVAC Thermostat (Port 5007)</div>
+                </div>
+                <div class="card mqtt">
+                    <div class="card-header">
+                        <span class="card-title">MQTT Packets</span>
+                    </div>
+                    <div class="card-value" id="mqttPackets">0</div>
+                    <div class="card-desc">Smart Power Meter (HiveMQ Broker)</div>
+                </div>
+            </div>
+
+            <!-- Chart & Statistics -->
+            <div class="hero-stats">
+                <div class="card chart-card">
+                    <div class="chart-header">
+                        <h2 style="font-size: 16px; font-weight:700;">Live Traffic Data Rate (B/s)</h2>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="rateChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+                    <h2 style="font-size: 16px; font-weight: 700; margin-bottom: 14px;">Receiver Health</h2>
+                    <div class="overview-stats">
+                        <div class="metric-row">
+                            <span class="metric-lbl">Total Bytes</span>
+                            <span class="metric-val" id="totalBytes">0 B</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-lbl">Avg Byte Rate</span>
+                            <span class="metric-val" id="avgRate">0 B/s</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-lbl">Uptime</span>
+                            <span class="metric-val" id="uptime">0s</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- IDS Panel -->
+            <div class="card ids-card">
+                <div class="console-header">
+                    <h2 style="font-size: 16px; font-weight: 700; color: #fca5a5;">⚠️ Real-Time IDS Alert Feed</h2>
+                    <span style="font-size: 12px; color: var(--text-muted);">Recent operational anomalies & network threats</span>
+                </div>
+                <div class="ids-body" id="idsBody">
+                    <div class="ids-empty">No security threats or anomalies detected. System secure.</div>
+                </div>
+            </div>
+
+            <!-- Terminal logs -->
+            <div class="card console-card">
+                <div class="console-header">
+                    <h2 style="font-size: 16px; font-weight: 700;">Live Network Packet Capture</h2>
+                    <span style="font-size: 12px; color: var(--text-muted);">Showing last 15 packets</span>
+                </div>
+                <div class="console-body" id="consoleBody">
+                    <div class="console-line"><span style="color:#6b7280;">Waiting for network traffic...</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <!-- Profile Selector Controls -->
+            <div class="controls-card">
+                <h2>Traffic Controller</h2>
+                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 10px;">Select override profile to change the traffic flow at runtime.</p>
+                
+                <button class="profile-btn" id="btnNormal" onclick="changeProfile('normal')">
+                    Normal Mode
+                    <div class="indicator"></div>
+                </button>
+                <button class="profile-btn" id="btnBurst" onclick="changeProfile('burst')">
+                    Burst Mode (Anomalies)
+                    <div class="indicator"></div>
+                </button>
+                <button class="profile-btn" id="btnAttack" onclick="changeProfile('attack')">
+                    DDoS Attack Mode
+                    <div class="indicator"></div>
+                </button>
+            </div>
+
+            <!-- IPS Blocklist -->
+            <div class="controls-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <h2 style="color: #f87171; margin-bottom: 0;">🛡️ IPS Firewall Control</h2>
+                    <div id="firewallBadge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid #10b981; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase;">Active Drop ON</div>
+                </div>
+                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">Toggle active packet dropping vs passive monitoring (IDS only).</p>
+                
+                <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                    <button class="profile-btn active-attack" id="btnFwOn" onclick="toggleFirewall(true)">
+                        🛡️ Active Drop (Default)
+                        <div class="indicator"></div>
+                    </button>
+                    <button class="profile-btn" id="btnFwOff" onclick="toggleFirewall(false)">
+                        ⚠️ IDS Only (No Drop)
+                        <div class="indicator"></div>
+                    </button>
+                </div>
+
+                <h3 style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Blocked Device List</h3>
+                <div class="blocked-list" id="blockedList">
+                    <div class="blocked-empty">No blocked devices. IPS clear.</div>
+                </div>
+            </div>
+            
+            <!-- Quick Info -->
+            <div class="card" style="font-size: 13px; line-height: 1.6;">
+                <h3 style="font-weight: 700; margin-bottom: 10px; font-size: 14px;">PCAP Active Logging</h3>
+                <p style="color: var(--text-muted); margin-bottom: 10px;">All telemetry events are being logged to <code style="color: #60a5fa; font-family:'Fira Code';">capture.pcap</code> dynamically.</p>
+                <p style="color: var(--text-muted);">You can open this file in Wireshark at any time to inspect raw frame details, TCP sequence alignments, and UDP payloads.</p>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        AICTE Smarthan Internship 2026-2027 | Under Guidance of Dr. Bhale Pradeepkumar Gajendra
+    </footer>
+
+    <script>
+        // Custom Canvas Chart Implementation
+        const canvas = document.getElementById('rateChart');
+        const ctx = canvas.getContext('2d');
+        let rateData = new Array(30).fill(0); // Store 30 data points
+        
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function drawChart() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const padding = 20;
+            const chartWidth = canvas.width - padding * 2;
+            const chartHeight = canvas.height - padding * 2;
+            
+            // Find max value for scale
+            const maxVal = Math.max(...rateData, 100);
+            
+            // Draw grid lines
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+            ctx.lineWidth = 1;
+            for(let i=0; i<=4; i++) {
+                const y = padding + (chartHeight / 4) * i;
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(canvas.width - padding, y);
+                ctx.stroke();
+                
+                // Add labels
+                ctx.fillStyle = '#6b7280';
+                ctx.font = '10px Outfit';
+                const gridVal = Math.round(maxVal - (maxVal / 4) * i);
+                ctx.fillText(gridVal + ' B/s', padding, y - 4);
+            }
+            
+            // Draw line
+            ctx.beginPath();
+            ctx.lineWidth = 3;
+            
+            // Dynamic color based on profile
+            let strokeStyle = '#3b82f6'; // Blue
+            let fillStyle = 'rgba(59, 130, 246, 0.05)';
+            
+            if (activeProfile === 'burst') {
+                strokeStyle = '#f59e0b'; // Gold
+                fillStyle = 'rgba(245, 158, 11, 0.05)';
+            } else if (activeProfile === 'attack') {
+                strokeStyle = '#ef4444'; // Red
+                fillStyle = 'rgba(239, 68, 68, 0.05)';
+            }
+            
+            ctx.strokeStyle = strokeStyle;
+            
+            for(let i = 0; i < rateData.length; i++) {
+                const x = padding + (chartWidth / (rateData.length - 1)) * i;
+                const y = padding + chartHeight - (rateData[i] / maxVal) * chartHeight;
+                if(i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.stroke();
+            
+            // Fill area under line
+            ctx.lineTo(padding + chartWidth, padding + chartHeight);
+            ctx.lineTo(padding, padding + chartHeight);
+            ctx.closePath();
+            ctx.fillStyle = fillStyle;
+            ctx.fill();
+        }
+
+        // Global simulation profile state
+        let activeProfile = 'normal';
+        let isFirstLoad = true;
+
+        // Formats bytes into human-readable strings
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Fetch updates from backend
+        async function fetchStats() {
+            try {
+                const res = await fetch('/api/stats');
+                if (!res.ok) throw new Error('Network error');
+                const data = await res.json();
+                
+                // Update text elements
+                document.getElementById('udpPackets').innerText = data.udp_packets.toLocaleString();
+                document.getElementById('tcpPackets').innerText = data.tcp_packets.toLocaleString();
+                document.getElementById('httpPackets').innerText = data.http_packets.toLocaleString();
+                document.getElementById('mqttPackets').innerText = data.mqtt_packets.toLocaleString();
+                document.getElementById('totalBytes').innerText = formatBytes(data.total_bytes);
+                document.getElementById('avgRate').innerText = formatBytes(data.avg_rate) + '/s';
+                document.getElementById('uptime').innerText = Math.round(data.elapsed) + 's';
+                
+                // Update graph data (scroll left)
+                rateData.push(data.current_rate || 0);
+                rateData.shift();
+                
+                // Active profile selection visual sync
+                activeProfile = data.active_profile;
+                updateProfileButtons(activeProfile);
+                
+                // Warning Banners visual sync
+                const alertBanner = document.getElementById('ddosAlert');
+                if (activeProfile === 'attack') {
+                    alertBanner.style.display = 'flex';
+                } else {
+                    alertBanner.style.display = 'none';
+                }
+                
+                // Update IDS alert feed
+                const idsBody = document.getElementById('idsBody');
+                if (data.alerts && data.alerts.length > 0) {
+                    idsBody.innerHTML = '';
+                    const reversedAlerts = [...data.alerts].reverse();
+                    reversedAlerts.forEach(alert => {
+                        const item = document.createElement('div');
+                        item.className = `alert-item severity-${alert.severity.toLowerCase()}`;
+                        
+                        const meta = document.createElement('span');
+                        meta.className = 'alert-meta';
+                        
+                        const typeSpan = document.createElement('span');
+                        typeSpan.className = `severity-${alert.severity.toLowerCase()}-lbl alert-type`;
+                        typeSpan.innerText = `[${alert.type}]`;
+                        meta.appendChild(typeSpan);
+                        
+                        const timeSpan = document.createElement('span');
+                        timeSpan.className = 'alert-time';
+                        timeSpan.innerText = `${alert.time} | Device: ${alert.device_id}`;
+                        meta.appendChild(timeSpan);
+                        
+                        item.appendChild(meta);
+                        
+                        const msg = document.createElement('div');
+                        msg.className = 'alert-message';
+                        msg.innerText = alert.message;
+                        item.appendChild(msg);
+                        
+                        idsBody.appendChild(item);
+                    });
+                } else {
+                    idsBody.innerHTML = '<div class="ids-empty">No security threats or anomalies detected. System secure.</div>';
+                }
+                
+                // Update IPS Blocked Devices list
+                const blockedList = document.getElementById('blockedList');
+                if (data.blocked_devices && data.blocked_devices.length > 0) {
+                    blockedList.innerHTML = '';
+                    data.blocked_devices.forEach(devId => {
+                        const item = document.createElement('div');
+                        item.className = 'blocked-item';
+                        
+                        const idSpan = document.createElement('span');
+                        idSpan.className = 'blocked-id';
+                        idSpan.innerText = devId;
+                        item.appendChild(idSpan);
+                        
+                        const btn = document.createElement('button');
+                        btn.className = 'unblock-btn';
+                        btn.innerText = 'Unblock';
+                        btn.onclick = () => unblockDevice(devId);
+                        item.appendChild(btn);
+                        
+                        blockedList.appendChild(item);
+                    });
+                } else {
+                    blockedList.innerHTML = '<div class="blocked-empty">No blocked devices. IPS clear.</div>';
+                }
+                
+                // Update Firewall state controls
+                const badge = document.getElementById('firewallBadge');
+                const btnFwOn = document.getElementById('btnFwOn');
+                const btnFwOff = document.getElementById('btnFwOff');
+                if (badge && btnFwOn && btnFwOff) {
+                    if (data.firewall_enabled !== false) {
+                        badge.style.background = 'rgba(16, 185, 129, 0.2)';
+                        badge.style.color = '#10b981';
+                        badge.style.borderColor = '#10b981';
+                        badge.innerText = 'Active Drop ON';
+                        btnFwOn.className = 'profile-btn active-attack';
+                        btnFwOff.className = 'profile-btn';
+                    } else {
+                        badge.style.background = 'rgba(245, 158, 11, 0.2)';
+                        badge.style.color = '#f59e0b';
+                        badge.style.borderColor = '#f59e0b';
+                        badge.innerText = 'IDS Only Mode';
+                        btnFwOn.className = 'profile-btn';
+                        btnFwOff.className = 'profile-btn active-burst';
+                    }
+                }
+                
+                // Update logs
+                const consoleBody = document.getElementById('consoleBody');
+                if (data.recent_logs && data.recent_logs.length > 0) {
+                    consoleBody.innerHTML = '';
+                    data.recent_logs.forEach(log => {
+                        const line = document.createElement('div');
+                        line.className = 'console-line';
+                        
+                        const timeSpan = document.createElement('span');
+                        timeSpan.style.color = '#4b5563';
+                        timeSpan.innerText = `[${log.time}] `;
+                        line.appendChild(timeSpan);
+                        
+                        const label = document.createElement('span');
+                        label.className = `proto-label proto-${log.proto.toLowerCase()}`;
+                        label.innerText = log.proto;
+                        line.appendChild(label);
+                        
+                        const text = document.createElement('span');
+                        text.innerText = log.text;
+                        line.appendChild(text);
+                        
+                        consoleBody.appendChild(line);
+                    });
+                    
+                    if (isFirstLoad) {
+                        consoleBody.scrollTop = consoleBody.scrollHeight;
+                        isFirstLoad = false;
+                    }
+                } else if (!data.recent_logs || data.recent_logs.length === 0) {
+                    consoleBody.innerHTML = '<div class="console-line"><span style="color:#6b7280;">Waiting for network traffic...</span></div>';
+                }
+                
+                drawChart();
+            } catch (err) {
+                console.error("Error polling metrics: ", err);
+            }
+        }
+
+        function updateProfileButtons(profile) {
+            const btnNormal = document.getElementById('btnNormal');
+            const btnBurst = document.getElementById('btnBurst');
+            const btnAttack = document.getElementById('btnAttack');
+            
+            btnNormal.className = 'profile-btn';
+            btnBurst.className = 'profile-btn';
+            btnAttack.className = 'profile-btn';
+            
+            if (profile === 'normal' || profile === null) {
+                btnNormal.classList.add('active-normal');
+            } else if (profile === 'burst') {
+                btnBurst.classList.add('active-burst');
+            } else if (profile === 'attack') {
+                btnAttack.classList.add('active-attack');
+            }
+        }
+
+        // Change profile on API
+        async function changeProfile(profile) {
+            try {
+                const override = profile === 'normal' ? null : profile;
+                const res = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ traffic_profile_override: override })
+                });
+                if (res.ok) {
+                    activeProfile = profile;
+                    updateProfileButtons(profile);
+                    fetchStats();
+                }
+            } catch(e) {
+                console.error("Failed to change traffic profile override: ", e);
+            }
+        }
+
+        // Unblock device on API
+        async function unblockDevice(devId) {
+            try {
+                const res = await fetch('/api/unblock', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ device_id: devId })
+                });
+                if (res.ok) {
+                    fetchStats();
+                }
+            } catch(e) {
+                console.error("Failed to unblock device: ", e);
+            }
+        }
+
+        // Toggle IPS Firewall on API
+        async function toggleFirewall(enabled) {
+            try {
+                const res = await fetch('/api/firewall', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled: enabled })
+                });
+                if (res.ok) {
+                    fetchStats();
+                }
+            } catch(e) {
+                console.error("Failed to toggle firewall: ", e);
+            }
+        }
+
+        // Start polling loop
+        setInterval(fetchStats, 1000);
+        fetchStats();
+    </script>
+</body>
+</html>
